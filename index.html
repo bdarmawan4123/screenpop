@@ -102,18 +102,31 @@
   .note{font-size:13.5px;color:var(--ink-soft);background:#f7f9fb;border-left:3px solid var(--accent);padding:10px 12px;border-radius:0 6px 6px 0}
   .note + .note{margin-top:9px}
 
-  /* ---- no-match state ---- */
+  /* ---- no-match / new-customer state ---- */
   .empty{text-align:center;padding:34px 20px}
   .empty__num{font-family:var(--mono);font-size:20px;font-weight:600;margin:6px 0 4px}
   .empty__hint{color:var(--ink-soft);font-size:14px;max-width:360px;margin:0 auto 16px}
   .btn{font:inherit;font-weight:600;font-size:14px;border:0;border-radius:8px;padding:9px 16px;background:var(--accent);color:#fff;cursor:pointer}
   .btn:focus-visible{outline:3px solid #9fd0d9;outline-offset:2px}
+  .form{display:grid;grid-template-columns:1fr 1fr;gap:13px 14px}
+  @media (max-width:480px){.form{grid-template-columns:1fr}}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field--full{grid-column:1 / -1}
+  .field label{font-size:12.5px;color:var(--ink-soft);font-weight:600}
+  .field input,.field select,.field textarea{font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink)}
+  .field input[readonly]{background:#f4f7f9;color:var(--ink-soft);font-family:var(--mono)}
+  .field textarea{resize:vertical;min-height:62px}
+  .form__actions{grid-column:1 / -1;display:flex;gap:12px;align-items:center;margin-top:2px;flex-wrap:wrap}
+  .muted{color:var(--ink-soft);font-size:13px}
+  .confirm{text-align:center;padding:30px 20px}
+  .confirm__tick{width:46px;height:46px;border-radius:50%;background:#e6f4ec;color:var(--pos);display:grid;place-items:center;font-size:24px;margin:0 auto 12px}
+  .confirm__ref{font-family:var(--mono);background:var(--chip);padding:2px 8px;border-radius:6px}
 
   /* ---- demo control (hidden when popped with ?ani=) ---- */
   .sim{margin-top:18px;font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .sim select{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink)}
   .sim__tag{font-family:var(--mono);background:var(--chip);padding:1px 7px;border-radius:5px}
-  a:focus-visible,button:focus-visible,select:focus-visible{outline:3px solid #9fd0d9;outline-offset:2px}
+  a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #9fd0d9;outline-offset:2px}
 </style>
 </head>
 <body>
@@ -143,10 +156,18 @@
 </div>
 
 <script>
-// --- fake contact book, keyed by phone (matched on the last 9 digits, so +61 / 0 / spacing all work) ---
+// ============================================================
+//  CONFIG — ANI to record mapping. This is the only block you edit.
+//  Matching is on the LAST 9 DIGITS of the phone, so +61.., 0..,
+//  and spaces all resolve to the same record.
+//  To add a person: copy a { ... } block, change phone to their ANI
+//  and edit the details. The simulate dropdown rebuilds itself from
+//  this list, so there is only one place to maintain.
+//  Each record can take an optional `tag` used as the dropdown hint.
+// ============================================================
 const CONTACTS = [
   {
-    phone:"+61412345678", name:"Margaret Whitfield", since:"2016", initials:"MW",
+    phone:"+61432187175", name:"Margaret Whitfield", since:"2016", initials:"MW", tag:"VIP",   // Budi
     tier:"Horizon Gold", guest:"8 cruises booked", ltv:"$71,240", sentiment:"pos", sentimentLabel:"Positive",
     chips:[{t:"VIP",c:"vip"},{t:"Repeat guest"},{t:"Balance due",c:"due"}],
     details:[["Date of birth","14 Mar 1958"],["Email","m.whitfield@…"],["Preferred agent","Sasha L."],["Lifetime value","$71,240"]],
@@ -158,7 +179,7 @@ const CONTACTS = [
     notes:["Always requests a late dining sitting and a quiet cabin midship.","Travelling with her sister on the Sep booking — link the records."]
   },
   {
-    phone:"+61423999100", name:"David Okafor", since:"2022", initials:"DO",
+    phone:"+61481469818", name:"David Okafor", since:"2022", initials:"DO", tag:"open case",   // colleague
     tier:"Horizon Silver", guest:"3 trips booked", ltv:"$18,900", sentiment:"neu", sentimentLabel:"At risk",
     chips:[{t:"Open case",c:"due"},{t:"Ski"}],
     details:[["Date of birth","09 Nov 1990"],["Email","d.okafor@…"],["Preferred agent","—"],["Lifetime value","$18,900"]],
@@ -169,7 +190,7 @@ const CONTACTS = [
     notes:["Called twice this week about the schedule change. Wants confirmation the transfer still meets the resort check-in."]
   },
   {
-    phone:"+61732104455", name:"Priya Nair", since:"2026", initials:"PN",
+    phone:"+61732104455", name:"Priya Nair", since:"2026", initials:"PN", tag:"enquiry",
     tier:"—", guest:"Enquiry stage", ltv:"—", sentiment:"pos", sentimentLabel:"Positive",
     chips:[{t:"New customer"},{t:"Quote sent"}],
     details:[["Date of birth","—"],["Email","priya.nair@…"],["Preferred agent","—"],["Lifetime value","—"]],
@@ -246,16 +267,70 @@ function renderMatched(c){
   </div>`;
 }
 
-function renderEmpty(ani){
+function renderNew(ani){
   return `
-  <section class="card" style="margin-top:0">
-    <div class="card__bd empty">
-      <div style="font-size:30px" aria-hidden="true">🔎</div>
-      <div class="empty__num">${fmtNum(ani)||"Unknown number"}</div>
-      <p class="empty__hint">No contact matches this caller ID. Start a new record so the call is logged against a customer.</p>
-      <button class="btn" type="button">Create new contact</button>
-    </div>
-  </section>`;
+  <div class="grid">
+    <section class="card">
+      <div class="card__hd">New caller</div>
+      <div class="card__bd">
+        <div class="id__top">
+          <div class="avatar" aria-hidden="true" style="background:var(--ink-soft)">+</div>
+          <div>
+            <div class="id__name">Unknown caller</div>
+            <div class="id__sub">No existing record</div>
+          </div>
+        </div>
+        <div class="chips">
+          <span class="chip">New enquiry</span>
+          <span class="chip">Captured from call</span>
+        </div>
+        <dl class="dl">
+          <dt>Caller ID</dt><dd>${fmtNum(ani)||"Unknown"}</dd>
+          <dt>Sentiment</dt><dd><span class="sentiment"><span class="dot dot--pos"></span>New</span></dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card__hd">Create contact</div>
+      <div class="card__bd">
+        <div class="form">
+          <div class="field"><label for="nf-first">First name</label><input id="nf-first" autocomplete="off"></div>
+          <div class="field"><label for="nf-last">Last name</label><input id="nf-last" autocomplete="off"></div>
+          <div class="field"><label for="nf-phone">Phone (from call)</label><input id="nf-phone" value="${fmtNum(ani)||""}" readonly></div>
+          <div class="field"><label for="nf-email">Email</label><input id="nf-email" type="email" autocomplete="off"></div>
+          <div class="field"><label for="nf-interest">Interest</label>
+            <select id="nf-interest"><option>Cruise</option><option>Ski</option><option>Other</option></select>
+          </div>
+          <div class="field"><label for="nf-source">How did they hear about us</label>
+            <select id="nf-source"><option>—</option><option>Referral</option><option>Web search</option><option>Returning customer</option></select>
+          </div>
+          <div class="field field--full"><label for="nf-notes">Notes</label><textarea id="nf-notes" placeholder="What is the caller asking about?"></textarea></div>
+          <div class="form__actions">
+            <button class="btn" type="button" onclick="createContact()">Create contact</button>
+            <span class="muted">Logs this call against the new record.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>`;
+}
+
+function createContact(){
+  const first=(document.getElementById("nf-first").value||"").trim();
+  const last=(document.getElementById("nf-last").value||"").trim();
+  const name=(first+" "+last).trim()||"New contact";
+  const ref="CT-"+Math.floor(10000+Math.random()*89999);
+  document.getElementById("callMatch").textContent=`New contact created · ${name}`;
+  document.getElementById("view").innerHTML=`
+    <section class="card">
+      <div class="card__bd confirm">
+        <div class="confirm__tick" aria-hidden="true">✓</div>
+        <div class="id__name">Contact created</div>
+        <p class="empty__hint">${name} has been added and this call is logged against the record.</p>
+        <div><span class="confirm__ref">${ref}</span></div>
+      </div>
+    </section>`;
 }
 
 // --- talk timer ---
@@ -281,7 +356,7 @@ function load(ani){
       document.getElementById("view").innerHTML=renderMatched(c);
     }else{
       document.getElementById("callMatch").textContent="No match — new caller";
-      document.getElementById("view").innerHTML=renderEmpty(ani);
+      document.getElementById("view").innerHTML=renderNew(ani);
     }
   };
   reduce?settle():setTimeout(settle,650);
@@ -293,11 +368,17 @@ const aniParam=params.get("ani")||params.get("phone");
 
 const sim=document.getElementById("sim");
 const sel=document.getElementById("simSelect");
-[["+61412345678","+61 412 345 678 — known (VIP)"],
- ["+61423999100","+61 423 999 100 — known (open case)"],
- ["+61732104455","+61 7 3210 4455 — known (enquiry)"],
- ["+61400000000","+61 400 000 000 — unknown caller"]]
- .forEach(([v,l])=>{const o=document.createElement("option");o.value=v;o.textContent=l;sel.appendChild(o);});
+// build the dropdown from CONTACTS (single source of truth), then add an unknown caller
+CONTACTS.forEach(c=>{
+  const o=document.createElement("option");
+  o.value=c.phone;
+  o.textContent=`${fmtNum(c.phone)} — ${c.name}${c.tag?" ("+c.tag+")":""}`;
+  sel.appendChild(o);
+});
+const unknown=document.createElement("option");
+unknown.value="+61400000000";
+unknown.textContent="+61 400 000 000 — unknown caller";
+sel.appendChild(unknown);
 sel.addEventListener("change",e=>load(e.target.value));
 
 if(aniParam){
