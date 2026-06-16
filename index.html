@@ -29,6 +29,8 @@
     color:var(--ink);
     background:var(--app);
     line-height:1.45;
+    min-height:100vh;
+    transition:background .4s ease;
     -webkit-font-smoothing:antialiased;
   }
   .wrap{max-width:1080px;margin:0 auto;padding:18px}
@@ -72,6 +74,10 @@
   .prio__src{font-weight:500;opacity:.75}
   .prio__dot{width:8px;height:8px;border-radius:50%}
   .prio__dot--vip{background:#e2b53f}.prio__dot--prospect{background:#5fd0a8}.prio__dot--standard{background:#9db4c4}
+  /* tier-tinted page background — soft washes so the white cards stay readable */
+  body.tier-vip{background:linear-gradient(165deg,#f7ecc9 0%,#eedfae 100%)}
+  body.tier-standard{background:linear-gradient(165deg,#eef2f6 0%,#dfe7f0 100%)}
+  body.tier-prospect{background:linear-gradient(165deg,#e9f3ef 0%,#d8ebe3 100%)}
 
   /* ---- layout ---- */
   .grid{display:grid;grid-template-columns:320px 1fr;gap:18px;margin-top:18px}
@@ -232,10 +238,12 @@ function applyPriority(c){
   const call=document.getElementById("call");
   const prios=document.getElementById("prios");
   call.classList.remove("call--vip","call--standard","call--prospect");
+  document.body.classList.remove("tier-vip","tier-standard","tier-prospect");
   const raw=(tierParam || (c && c.priority) || "").trim();
   const key=raw.toLowerCase();
   if(!["vip","standard","prospect"].includes(key)){prios.hidden=true;prios.innerHTML="";return;}
   call.classList.add("call--"+key);
+  document.body.classList.add("tier-"+key);
   const label=raw.charAt(0).toUpperCase()+raw.slice(1).toLowerCase();
   const src=tierParam?` <span class="prio__src">from IVR</span>`:"";
   let html=`<span class="prio"><span class="prio__dot prio__dot--${key}"></span>Priority: ${label}${src}</span>`;
