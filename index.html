@@ -63,6 +63,16 @@
   .call__meta{text-align:right;font-size:12.5px;color:#9db4c4;flex:none}
   .call__timer{font-family:var(--mono);font-size:18px;color:#fff}
 
+  /* ---- IVR-passed priority (tier / status URL params) ---- */
+  .call--vip{box-shadow:inset 5px 0 0 #e2b53f,var(--shadow);background:linear-gradient(90deg,#15384f,var(--ink))}
+  .call--prospect{box-shadow:inset 5px 0 0 #5fd0a8,var(--shadow)}
+  .call--standard{box-shadow:inset 5px 0 0 #6f8aa0,var(--shadow)}
+  .prios{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+  .prio{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;letter-spacing:.03em;padding:2px 9px;border-radius:999px;background:rgba(255,255,255,.14);color:#fff}
+  .prio__src{font-weight:500;opacity:.75}
+  .prio__dot{width:8px;height:8px;border-radius:50%}
+  .prio__dot--vip{background:#e2b53f}.prio__dot--prospect{background:#5fd0a8}.prio__dot--standard{background:#9db4c4}
+
   /* ---- layout ---- */
   .grid{display:grid;grid-template-columns:320px 1fr;gap:18px;margin-top:18px}
   @media (max-width:760px){.grid{grid-template-columns:1fr}}
@@ -138,6 +148,7 @@
       <div class="call__line" id="callState">Connecting…</div>
       <div class="call__num" id="callNum">—</div>
       <div class="call__match" id="callMatch">Searching contacts by caller ID</div>
+      <div class="prios" id="prios" hidden></div>
     </div>
     <div class="call__meta">
       <div>Talk time</div>
@@ -167,7 +178,7 @@
 // ============================================================
 const CONTACTS = [
   {
-    phone:"+61432187175", name:"Margaret Whitfield", since:"2016", initials:"MW", tag:"VIP",   // Budi
+    phone:"+61432187175", name:"Margaret Whitfield", since:"2016", initials:"MW", tag:"VIP", priority:"VIP",   // Budi
     tier:"Horizon Gold", guest:"8 cruises booked", ltv:"$71,240", sentiment:"pos", sentimentLabel:"Positive",
     chips:[{t:"VIP",c:"vip"},{t:"Repeat guest"},{t:"Balance due",c:"due"}],
     details:[["Date of birth","14 Mar 1958"],["Email","m.whitfield@…"],["Preferred agent","Sasha L."],["Lifetime value","$71,240"]],
@@ -179,7 +190,7 @@ const CONTACTS = [
     notes:["Always requests a late dining sitting and a quiet cabin midship.","Travelling with her sister on the Sep booking — link the records."]
   },
   {
-    phone:"+61481469818", name:"David Okafor", since:"2022", initials:"DO", tag:"open case",   // colleague
+    phone:"+61481469818", name:"David Okafor", since:"2022", initials:"DO", tag:"open case", priority:"Standard",   // colleague
     tier:"Horizon Silver", guest:"3 trips booked", ltv:"$18,900", sentiment:"neu", sentimentLabel:"At risk",
     chips:[{t:"Open case",c:"due"},{t:"Ski"}],
     details:[["Date of birth","09 Nov 1990"],["Email","d.okafor@…"],["Preferred agent","—"],["Lifetime value","$18,900"]],
@@ -190,7 +201,7 @@ const CONTACTS = [
     notes:["Called twice this week about the schedule change. Wants confirmation the transfer still meets the resort check-in."]
   },
   {
-    phone:"+61732104455", name:"Priya Nair", since:"2026", initials:"PN", tag:"enquiry",
+    phone:"+61732104455", name:"Priya Nair", since:"2026", initials:"PN", tag:"enquiry", priority:"Prospect",
     tier:"—", guest:"Enquiry stage", ltv:"—", sentiment:"pos", sentimentLabel:"Positive",
     chips:[{t:"New customer"},{t:"Quote sent"}],
     details:[["Date of birth","—"],["Email","priya.nair@…"],["Preferred agent","—"],["Lifetime value","—"]],
@@ -212,6 +223,25 @@ function fmtNum(raw){
   if(m.length===10 && m[1]==="4") return m.replace(/(\d{4})(\d{3})(\d{3})/,"$1 $2 $3");
   if(m.length===10) return m.replace(/(\d{2})(\d{4})(\d{4})/,"$1 $2 $3");
   return raw;
+}
+
+// IVR-passed priority: tier param drives the styling (proves the IVR set it);
+// in preview/dropdown mode there's no param, so fall back to the contact's own tier.
+const prettyStatus = s => s.replace(/[-_]/g," ").replace(/\b\w/g,m=>m.toUpperCase());
+function applyPriority(c){
+  const call=document.getElementById("call");
+  const prios=document.getElementById("prios");
+  call.classList.remove("call--vip","call--standard","call--prospect");
+  const raw=(tierParam || (c && c.priority) || "").trim();
+  const key=raw.toLowerCase();
+  if(!["vip","standard","prospect"].includes(key)){prios.hidden=true;prios.innerHTML="";return;}
+  call.classList.add("call--"+key);
+  const label=raw.charAt(0).toUpperCase()+raw.slice(1).toLowerCase();
+  const src=tierParam?` <span class="prio__src">from IVR</span>`:"";
+  let html=`<span class="prio"><span class="prio__dot prio__dot--${key}"></span>Priority: ${label}${src}</span>`;
+  if(statusParam) html+=`<span class="prio">${prettyStatus(statusParam)}</span>`;
+  prios.innerHTML=html;
+  prios.hidden=false;
 }
 
 function renderMatched(c){
@@ -358,6 +388,7 @@ function load(ani){
       document.getElementById("callMatch").textContent="No match — new caller";
       document.getElementById("view").innerHTML=renderNew(ani);
     }
+    applyPriority(c);
   };
   reduce?settle():setTimeout(settle,650);
 }
@@ -365,6 +396,8 @@ function load(ani){
 // --- input: query string first (how Genesys pops it), then the simulate control ---
 const params=new URLSearchParams(location.search);
 const aniParam=params.get("ani")||params.get("phone");
+const tierParam=(params.get("tier")||"").trim();
+const statusParam=(params.get("status")||"").trim();
 
 const sim=document.getElementById("sim");
 const sel=document.getElementById("simSelect");
