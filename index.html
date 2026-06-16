@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voyage CRM — Agent Record</title>
+<style>
+  :root{
+    --ink:#0e2536;          /* deep navy header/text */
+    --ink-soft:#42596b;     /* secondary text */
+    --line:#dde4ea;         /* hairlines */
+    --app:#eef1f4;          /* app background */
+    --panel:#ffffff;        /* card surfaces */
+    --accent:#1f7a8c;       /* teal, interactive */
+    --accent-ink:#0d4651;
+    --pos:#1b8a5a;          /* positive */
+    --warn:#b9700a;         /* attention */
+    --neg:#c0392b;          /* risk */
+    --chip:#eef4f6;
+    --radius:10px;
+    --shadow:0 1px 2px rgba(14,37,54,.06),0 4px 16px rgba(14,37,54,.06);
+    --mono:"SFMono-Regular",ui-monospace,Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:var(--sans);
+    color:var(--ink);
+    background:var(--app);
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:18px}
+
+  /* ---- incoming call header (the signature moment) ---- */
+  .call{
+    background:var(--ink);
+    color:#fff;
+    border-radius:var(--radius);
+    padding:14px 18px;
+    display:flex;align-items:center;gap:16px;
+    box-shadow:var(--shadow);
+    position:relative;overflow:hidden;
+  }
+  .call__pulse{
+    width:12px;height:12px;border-radius:50%;
+    background:#5fd0a8;flex:none;
+    box-shadow:0 0 0 0 rgba(95,208,168,.7);
+    animation:ring 1.4s ease-out infinite;
+  }
+  .state-matched .call__pulse{background:#5fd0a8;animation:none;box-shadow:none}
+  .state-connecting .call__pulse{background:#f0c674}
+  @keyframes ring{
+    0%{box-shadow:0 0 0 0 rgba(95,208,168,.6)}
+    100%{box-shadow:0 0 0 14px rgba(95,208,168,0)}
+  }
+  @media (prefers-reduced-motion:reduce){.call__pulse{animation:none}}
+  .call__main{flex:1;min-width:0}
+  .call__line{font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:#9db4c4}
+  .call__num{font-family:var(--mono);font-size:21px;font-weight:600;letter-spacing:.5px}
+  .call__match{font-size:13.5px;color:#cfe0ea;margin-top:2px}
+  .call__meta{text-align:right;font-size:12.5px;color:#9db4c4;flex:none}
+  .call__timer{font-family:var(--mono);font-size:18px;color:#fff}
+
+  /* ---- layout ---- */
+  .grid{display:grid;grid-template-columns:320px 1fr;gap:18px;margin-top:18px}
+  @media (max-width:760px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .card__hd{padding:13px 16px;border-bottom:1px solid var(--line);font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+  .card__bd{padding:16px}
+
+  /* ---- identity ---- */
+  .id__top{display:flex;gap:13px;align-items:center}
+  .avatar{width:52px;height:52px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--accent);color:#fff;font-weight:600;font-size:19px}
+  .id__name{font-size:19px;font-weight:650;line-height:1.2}
+  .id__sub{font-size:13px;color:var(--ink-soft)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:13px}
+  .chip{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--chip);color:var(--accent-ink);font-weight:600}
+  .chip--vip{background:#fbf0d8;color:#8a5a00}
+  .chip--due{background:#fbe6e2;color:var(--neg)}
+  .dl{margin:15px 0 0;display:grid;grid-template-columns:auto 1fr;gap:7px 14px;font-size:13.5px}
+  .dl dt{color:var(--ink-soft)}
+  .dl dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+  .sentiment{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .dot--pos{background:var(--pos)} .dot--neu{background:var(--warn)} .dot--neg{background:var(--neg)}
+
+  /* ---- right column blocks ---- */
+  .stack{display:flex;flex-direction:column;gap:18px}
+  .trip{display:flex;gap:14px;align-items:flex-start;padding:13px 0;border-bottom:1px solid var(--line)}
+  .trip:last-child{border-bottom:0;padding-bottom:0}
+  .trip:first-child{padding-top:0}
+  .trip__icon{width:38px;height:38px;border-radius:8px;flex:none;display:grid;place-items:center;background:#eaf2f4;font-size:18px}
+  .trip__body{flex:1;min-width:0}
+  .trip__title{font-weight:600;font-size:14.5px}
+  .trip__meta{font-size:13px;color:var(--ink-soft)}
+  .trip__ref{font-family:var(--mono);font-size:12px;color:var(--accent-ink);background:var(--chip);padding:1px 6px;border-radius:5px}
+  .trip__right{text-align:right;font-size:13px;flex:none}
+  .status{font-weight:600}
+  .status--due{color:var(--neg)} .status--ok{color:var(--pos)} .status--open{color:var(--warn)}
+  .note{font-size:13.5px;color:var(--ink-soft);background:#f7f9fb;border-left:3px solid var(--accent);padding:10px 12px;border-radius:0 6px 6px 0}
+  .note + .note{margin-top:9px}
+
+  /* ---- no-match state ---- */
+  .empty{text-align:center;padding:34px 20px}
+  .empty__num{font-family:var(--mono);font-size:20px;font-weight:600;margin:6px 0 4px}
+  .empty__hint{color:var(--ink-soft);font-size:14px;max-width:360px;margin:0 auto 16px}
+  .btn{font:inherit;font-weight:600;font-size:14px;border:0;border-radius:8px;padding:9px 16px;background:var(--accent);color:#fff;cursor:pointer}
+  .btn:focus-visible{outline:3px solid #9fd0d9;outline-offset:2px}
+
+  /* ---- demo control (hidden when popped with ?ani=) ---- */
+  .sim{margin-top:18px;font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .sim select{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink)}
+  .sim__tag{font-family:var(--mono);background:var(--chip);padding:1px 7px;border-radius:5px}
+  a:focus-visible,button:focus-visible,select:focus-visible{outline:3px solid #9fd0d9;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="call state-connecting" id="call" aria-live="polite">
+    <span class="call__pulse" aria-hidden="true"></span>
+    <div class="call__main">
+      <div class="call__line" id="callState">Connecting…</div>
+      <div class="call__num" id="callNum">—</div>
+      <div class="call__match" id="callMatch">Searching contacts by caller ID</div>
+    </div>
+    <div class="call__meta">
+      <div>Talk time</div>
+      <div class="call__timer" id="timer">0:00</div>
+    </div>
+  </header>
+
+  <main id="view"></main>
+
+  <div class="sim" id="sim">
+    <span>Demo: simulate an incoming number</span>
+    <select id="simSelect" aria-label="Simulate incoming caller ID"></select>
+    <span>When Genesys pops this page it passes <span class="sim__tag">?ani=</span> and the control is unnecessary.</span>
+  </div>
+
+</div>
+
+<script>
+// --- fake contact book, keyed by phone (matched on the last 9 digits, so +61 / 0 / spacing all work) ---
+const CONTACTS = [
+  {
+    phone:"+61412345678", name:"Margaret Whitfield", since:"2016", initials:"MW",
+    tier:"Horizon Gold", guest:"8 cruises booked", ltv:"$71,240", sentiment:"pos", sentimentLabel:"Positive",
+    chips:[{t:"VIP",c:"vip"},{t:"Repeat guest"},{t:"Balance due",c:"due"}],
+    details:[["Date of birth","14 Mar 1958"],["Email","m.whitfield@…"],["Preferred agent","Sasha L."],["Lifetime value","$71,240"]],
+    trips:[
+      {icon:"🚢",title:"Coral Princess — 12-night South Pacific",meta:"Sails 02 Sep 2026 · Mini-suite M204 · 2 guests",ref:"BK-44871",right:"Balance due",rcls:"due",rsub:"$1,420 by 04 Jul"},
+      {icon:"🚢",title:"Ovation of the Seas — 9-night NZ",meta:"Returned 18 Jan 2025 · Balcony",ref:"BK-39522",right:"Completed",rcls:"ok"}
+    ],
+    cases:[],
+    notes:["Always requests a late dining sitting and a quiet cabin midship.","Travelling with her sister on the Sep booking — link the records."]
+  },
+  {
+    phone:"+61423999100", name:"David Okafor", since:"2022", initials:"DO",
+    tier:"Horizon Silver", guest:"3 trips booked", ltv:"$18,900", sentiment:"neu", sentimentLabel:"At risk",
+    chips:[{t:"Open case",c:"due"},{t:"Ski"}],
+    details:[["Date of birth","09 Nov 1990"],["Email","d.okafor@…"],["Preferred agent","—"],["Lifetime value","$18,900"]],
+    trips:[
+      {icon:"🎿",title:"Niseko, Japan — 7 nights ski & stay",meta:"Departs 11 Jul 2026 · The Vale Niseko · 2 guests",ref:"BK-45120",right:"Flights changed",rcls:"open",rsub:"Awaiting re-quote"}
+    ],
+    cases:[{title:"Flight schedule change — outbound moved 6 hrs",status:"open"}],
+    notes:["Called twice this week about the schedule change. Wants confirmation the transfer still meets the resort check-in."]
+  },
+  {
+    phone:"+61732104455", name:"Priya Nair", since:"2026", initials:"PN",
+    tier:"—", guest:"Enquiry stage", ltv:"—", sentiment:"pos", sentimentLabel:"Positive",
+    chips:[{t:"New customer"},{t:"Quote sent"}],
+    details:[["Date of birth","—"],["Email","priya.nair@…"],["Preferred agent","—"],["Lifetime value","—"]],
+    trips:[
+      {icon:"🚢",title:"Quote: Mediterranean — 10 nights",meta:"Quote sent 12 Jun 2026 · Not yet booked",ref:"QT-10883",right:"Open quote",rcls:"open",rsub:"Expires 26 Jun"}
+    ],
+    cases:[],
+    notes:["First-time caller last week. Comparing Med itineraries for a Sep 2026 anniversary trip."]
+  }
+];
+
+const last9 = s => (s||"").replace(/\D/g,"").slice(-9);
+const byPhone = ani => CONTACTS.find(c => last9(c.phone) === last9(ani));
+
+function fmtNum(raw){
+  const d=(raw||"").replace(/[^\d+]/g,"");
+  // light AU pretty-print; falls back to raw
+  const m=d.replace(/^\+?61/,"0");
+  if(m.length===10 && m[1]==="4") return m.replace(/(\d{4})(\d{3})(\d{3})/,"$1 $2 $3");
+  if(m.length===10) return m.replace(/(\d{2})(\d{4})(\d{4})/,"$1 $2 $3");
+  return raw;
+}
+
+function renderMatched(c){
+  const trips=c.trips.map(t=>`
+    <div class="trip">
+      <div class="trip__icon" aria-hidden="true">${t.icon}</div>
+      <div class="trip__body">
+        <div class="trip__title">${t.title}</div>
+        <div class="trip__meta">${t.meta}</div>
+        <div style="margin-top:5px"><span class="trip__ref">${t.ref}</span></div>
+      </div>
+      <div class="trip__right">
+        <div class="status status--${t.rcls}">${t.right}</div>
+        ${t.rsub?`<div style="color:var(--ink-soft)">${t.rsub}</div>`:""}
+      </div>
+    </div>`).join("");
+
+  const notes=c.notes.map(n=>`<div class="note">${n}</div>`).join("");
+  const chips=c.chips.map(ch=>`<span class="chip ${ch.c?"chip--"+ch.c:""}">${ch.t}</span>`).join("");
+  const dl=c.details.map(d=>`<dt>${d[0]}</dt><dd>${d[1]}</dd>`).join("");
+
+  return `
+  <div class="grid">
+    <section class="card">
+      <div class="card__hd">Customer</div>
+      <div class="card__bd">
+        <div class="id__top">
+          <div class="avatar" aria-hidden="true">${c.initials}</div>
+          <div>
+            <div class="id__name">${c.name}</div>
+            <div class="id__sub">${c.tier!=="—"?c.tier+" · ":""}Customer since ${c.since}</div>
+          </div>
+        </div>
+        <div class="chips">${chips}</div>
+        <dl class="dl">
+          ${dl}
+          <dt>Sentiment</dt>
+          <dd><span class="sentiment"><span class="dot dot--${c.sentiment}"></span>${c.sentimentLabel}</span></dd>
+        </dl>
+      </div>
+    </section>
+
+    <div class="stack">
+      <section class="card">
+        <div class="card__hd">Bookings &amp; quotes</div>
+        <div class="card__bd">${trips}</div>
+      </section>
+      <section class="card">
+        <div class="card__hd">Agent notes</div>
+        <div class="card__bd">${notes}</div>
+      </section>
+    </div>
+  </div>`;
+}
+
+function renderEmpty(ani){
+  return `
+  <section class="card" style="margin-top:0">
+    <div class="card__bd empty">
+      <div style="font-size:30px" aria-hidden="true">🔎</div>
+      <div class="empty__num">${fmtNum(ani)||"Unknown number"}</div>
+      <p class="empty__hint">No contact matches this caller ID. Start a new record so the call is logged against a customer.</p>
+      <button class="btn" type="button">Create new contact</button>
+    </div>
+  </section>`;
+}
+
+// --- talk timer ---
+let secs=0;
+setInterval(()=>{secs++;const m=Math.floor(secs/60),s=String(secs%60).padStart(2,"0");
+  document.getElementById("timer").textContent=`${m}:${s}`;},1000);
+
+// --- main render ---
+function load(ani){
+  const call=document.getElementById("call");
+  document.getElementById("callNum").textContent=fmtNum(ani)||"Unknown";
+  call.className="call state-connecting";
+  document.getElementById("callState").textContent="Connecting…";
+  document.getElementById("callMatch").textContent="Searching contacts by caller ID";
+
+  const reduce=window.matchMedia("(prefers-reduced-motion:reduce)").matches;
+  const settle=()=>{
+    const c=byPhone(ani);
+    call.className="call state-matched";
+    document.getElementById("callState").textContent="On call";
+    if(c){
+      document.getElementById("callMatch").textContent=`Matched · ${c.name}`;
+      document.getElementById("view").innerHTML=renderMatched(c);
+    }else{
+      document.getElementById("callMatch").textContent="No match — new caller";
+      document.getElementById("view").innerHTML=renderEmpty(ani);
+    }
+  };
+  reduce?settle():setTimeout(settle,650);
+}
+
+// --- input: query string first (how Genesys pops it), then the simulate control ---
+const params=new URLSearchParams(location.search);
+const aniParam=params.get("ani")||params.get("phone");
+
+const sim=document.getElementById("sim");
+const sel=document.getElementById("simSelect");
+[["+61412345678","+61 412 345 678 — known (VIP)"],
+ ["+61423999100","+61 423 999 100 — known (open case)"],
+ ["+61732104455","+61 7 3210 4455 — known (enquiry)"],
+ ["+61400000000","+61 400 000 000 — unknown caller"]]
+ .forEach(([v,l])=>{const o=document.createElement("option");o.value=v;o.textContent=l;sel.appendChild(o);});
+sel.addEventListener("change",e=>load(e.target.value));
+
+if(aniParam){
+  sim.style.display="none";   // real pop: hide the demo control
+  load(aniParam);
+}else{
+  load(sel.value);            // preview mode: use the control
+}
+</script>
+</body>
+</html>
